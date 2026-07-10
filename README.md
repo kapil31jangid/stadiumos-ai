@@ -149,15 +149,26 @@ gcloud builds submit --config cloudbuild.yaml
 ---
 
 ## Testing
-To run the automated Python backend tests:
+
+The project maintains **37 backend unit and integration tests** across three test modules:
+
+| Module | Coverage |
+|---|---|
+| `test_guardrails.py` | 20 tests — all deterministic guardrail rules, no LLM involved |
+| `test_navigation_api.py` | 12 tests — API contract, validation, rate limiting, operator endpoint |
+| `test_translation.py` | 5 tests — translation fallback (critical: API failure → English, not crash) |
+
+To run the full test suite:
 ```bash
-PYTHONPATH=backend ./venv/bin/pytest backend/tests
+PYTHONPATH=backend ./venv/bin/pytest -v
 ```
 
-To run frontend builds:
-```bash
-cd frontend && npm run build
-```
+Tests use `USE_MOCKS=true` (default), so no live GCP credentials are required.
+
+CI runs automatically on every push to `main` via [`.github/workflows/ci.yml`](file:///home/kapil31jangid/stadiumos-ai/.github/workflows/ci.yml), executing:
+1. Python lint (ruff) + pytest
+2. Frontend lint (oxlint) + Vite production build
+3. Secret scan (grep for hardcoded API keys)
 
 ---
 
