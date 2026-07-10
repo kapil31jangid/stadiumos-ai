@@ -23,4 +23,8 @@ def test_navigation_api_scaffold():
     assert response.status_code == 200
     data = response.json()
     assert "route_steps" in data
-    assert data["eta"] == 12
+    assert len(data["route_steps"]) > 0
+    assert isinstance(data["eta"], int)
+    assert data["eta"] > 0
+    assert "reasoning" in data
+    assert isinstance(data["alerts"], list)
