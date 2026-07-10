@@ -1,0 +1,78 @@
+name: StadiumSense AI — CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Backend: lint + test ───────────────────────────────────────────────────
+  backend:
+    name: Backend (Python 3.12)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Lint with ruff (fast Python linter)
+        run: |
+          pip install ruff
+          ruff check backend/app backend/tests --select E,W,F --ignore E501
+
+      - name: Run pytest
+        env:
+          USE_MOCKS: "true"
+          PYTHONPATH: backend
+        run: pytest backend/tests -v --tb=short
+
+  # ── Frontend: build + lint ─────────────────────────────────────────────────
+  frontend:
+    name: Frontend (Node 20)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Lint with oxlint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Production build
+        working-directory: frontend
+        run: npm run build
+
+  # ── Secret scan — no credentials committed ────────────────────────────────
+  secret-scan:
+    name: Secret Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check for accidental secrets
+        run: |
+          echo "Scanning for hardcoded API keys / service account JSON..."
+          ! grep -rE "(AIza[0-9A-Za-z\-_]{35}|service_account.*json|-----BEGIN (RSA |EC )?PRIVATE KEY)" \
+            --include="*.py" --include="*.js" --include="*.jsx" --include="*.json" \
+            --exclude-dir=node_modules --exclude-dir=venv --exclude-dir=.git \
+            . && echo "✅ No secrets found."
