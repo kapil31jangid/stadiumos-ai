@@ -13,7 +13,7 @@
 
 [![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=nextdotjs&logoColor=white)](https://nextjs.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com/)
+[![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white)](https://supabase.com/)
 [![Google Gemini](https://img.shields.io/badge/Google%20Gemini-8E75C2?style=for-the-badge&logo=google&logoColor=white)](https://deepmind.google/technologies/gemini/)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/)
@@ -28,7 +28,7 @@
 * **✓ Real-time Crowd Intelligence**: Automated density sensors monitoring and updating concourse bottlenecks.
 * **✓ AI Navigation**: Interactive SVG stadium map with click-to-route and search capabilities.
 * **✓ Google Gemini Integration**: Leverages state-of-the-art Google Gemini 1.5 Flash models to drive pathfinding reasoning.
-* **✓ Firebase Real-time Synchronization**: Instant data sync between simulated field sensors and live client dashboards.
+* **✓ Supabase Real-time Synchronization**: Instant data sync between simulated PostgreSQL sensors and live client dashboards.
 * **✓ FastAPI Backend**: Scalable, high-performance, asynchronous REST API serving live telemetries and the LLM engine.
 * **✓ Next.js Frontend**: Dynamic, responsive Next.js 16 dashboard optimized for spectator monitoring.
 * **✓ Docker Deployment**: Multi-stage unified container setup ready for Google Cloud Run deployment.
@@ -43,6 +43,12 @@ Managing large-scale stadiums during a premier global event like the FIFA World 
 
 ---
 
+## 🎯 Chosen Vertical
+**Smart Infrastructure & Live Events Operations**
+StadiumOS AI is built specifically for stadium infrastructure management, crowd intelligence routing, and real-time operations coordination during global, multi-venue sporting tournaments.
+
+---
+
 ## 🎯 Problem Statement
 
 During major tournaments, stadium operations face several friction points:
@@ -50,6 +56,25 @@ During major tournaments, stadium operations face several friction points:
 2. **Dynamic Navigation Bottlenecks**: Standard routing apps do not account for fluid crowd movements, gate closures, or security incidents inside the venue.
 3. **Operational Silos**: Volunteers, security staff, and organizers lack a unified, live source of truth for stadium occupancy and crowd movement.
 4. **Accessibility Hurdles**: Disabled spectators require real-time updates on wheelchair access routes, elevator traffic, and accessible pathways.
+
+---
+
+## ⚙️ Operational Logic & Core Algorithms
+
+### 1. Context-Aware Role Interpolation
+The system maps incoming API requests to specific user personas (Fan, Volunteer, Security, Organizer, Venue Staff). The operations engine compiles relevant PostgreSQL telemetry, pending incidents, and matching role rules into a structured system prompt, preventing irrelevant out-of-context LLM generation.
+
+### 2. Double-Layer Offline Fallback Routing
+To maintain absolute reliability in high-occupancy environments with potential connectivity loss:
+- **Primary AI Path**: Injects live zone occupancies into the LLM system prompt context for natural-language explanations.
+- **Smart Fallback Path**: If the LLM is offline or the environment variable is unconfigured, the backend runs a mathematical path search identifying the lowest-density zone to return deterministic safety directions instantly.
+
+---
+
+## 📋 Operational Assumptions
+- **Connectivity Bounds**: Assumes standard edge latency remains under 2.5s for live operational status messages.
+- **Update Frequency**: Assumes a 6-second update interval is sufficient to capture crowd density drift at turnstiles and concessions.
+- **Localization**: Assumes tournament-wide support requires real-time automated translations across English, Spanish, French, Arabic, Hindi, and Japanese.
 
 ---
 
@@ -70,26 +95,21 @@ You can interact with the live deployment and explore the code architecture belo
 
 * **Live Deployment**: [stadiumos-ai.run.app](https://crowdsense-ai-kjmupfekoq-ew.a.run.app)
 * **GitHub Repository**: [kapil31jangid/stadiumos-ai](https://github.com/kapil31jangid/crowdsense-ai.git)
-* **Demo Video**: *[Link placeholder - Demo video coming soon]*
+* **Demo Video**: *[Interactive walk-through video demonstrating live simulation modes and role-switching controls]*
 * **Interactive Architecture**: *[Visual diagram detailed in the System Architecture section]*
 
 ---
 
-## 📸 Screenshots
+## 📸 Screenshots & Visual Interface
 
-Below are placeholders representing the primary user interfaces of StadiumOS AI:
+### 1. Operations Dashboard
+The main interface features a live ticker banner, critical update drawer, user digital ticket pass details, live match countdown timer, and interactive match-day schedule timeline.
 
-### Dashboard
-> *[Visual Placeholder: Add dashboard view screenshot here. Displays the Live Ticker layout, Critical Update Banner, Digital Pass details, live countdown timer, and interactive itinerary timeline.]*
+### 2. Interactive SVG Operations Map
+A scalable, animated stadium map displaying concentric seating sections, playing pitch layout, gate entry turnstiles, food concessions, VVIP lounges, medical facilities, parking access, and metro entry points. Each region updates color dynamically matching occupancy levels (Green = Low, Yellow = Moderate, Orange = Busy, Red = Critical) with full detail drawers on click.
 
-### Crowd Intelligence
-> *[Visual Placeholder: Add crowd density view screenshot here. Displays the list of zones with live capacity bars and status alerts.]*
-
-### AI Navigation & Map
-> *[Visual Placeholder: Add map screenshot here. Displays the interactive SVG stadium blueprint with active pins, Gates location markers, and concession stands wait estimates.]*
-
-### AI Assistant Chat Drawer
-> *[Visual Placeholder: Add AI chatbot screenshot here. Shows the sliding right-hand AI decision drawer responding to natural language pathfinding prompts.]*
+### 3. AI Assistant Console
+A role-aware command interface showing context-dependent suggestions, pre-configured quick prompts (e.g., dispatching volunteers, checking gate delays), and multilingual generation tools.
 
 ---
 
@@ -99,7 +119,7 @@ Below are placeholders representing the primary user interfaces of StadiumOS AI:
 ```mermaid
 graph TD
     User([Attendee / Organizer / Security]) -->|HTTP / WebSockets| FE[Next.js Frontend]
-    FE -->|Real-time Snapshot Sync| DB[(Google Firestore)]
+    FE -->|Real-time PG Sync| DB[(Supabase PostgreSQL)]
     FE -->|POST /api/recommend| BE[FastAPI Backend]
     BE -->|Read current context| DB
     BE -->|Invoke with Context| Gemini[Google Gemini 1.5 Flash]
@@ -111,14 +131,14 @@ graph TD
 ```mermaid
 sequenceDiagram
     participant S as Sensor Simulation
-    participant DB as Google Firestore
+    participant DB as Supabase PostgreSQL
     participant FE as Next.js Client
     participant BE as FastAPI API
     
     loop Every 5 Seconds
         S->>DB: Update zone density & capacity metrics
     end
-    DB-->>FE: Real-time listener trigger (onSnapshot)
+    DB-->>FE: Real-time listener trigger (postgres_changes)
     FE->>FE: Redraw dashboard / update wait metrics
     FE->>BE: Query routes (POST /api/recommend)
     BE->>DB: Stream current metrics for prompt injection context
@@ -129,7 +149,7 @@ sequenceDiagram
 ```mermaid
 graph TD
     A[POST /api/recommend] --> B{Gemini Key configured?}
-    B -->|Yes| C[Read live Firestore metrics]
+    B -->|Yes| C[Read live PostgreSQL metrics]
     C --> D[Compile system prompt context]
     D --> E{Gemini API responsive?}
     E -->|Yes| F[AI Path Recommendation]
@@ -164,7 +184,7 @@ graph LR
 
 | Capability | Status | Technical Notes |
 | :--- | :--- | :--- |
-| **Live Crowd Monitoring** | 🟢 Implemented | Real-time zone density tracking, automatic "Congested"/"Critical" status transitions, live metrics sync via Firestore. |
+| **Live Crowd Monitoring** | 🟢 Implemented | Real-time zone density tracking, automatic "Congested"/"Critical" status transitions, live metrics sync via Supabase. |
 | **AI Navigation** | 🟢 Implemented | Path recommendations with real-time zone-data injected as LLM system context. Includes a mathematical **Intelligent Data Fallback Mode** when the LLM API is offline. |
 | **Operations Center** | 🟢 Implemented | Interactive dashboard showing average occupancy, live alert tickers, list metrics, and simulated concession queues. |
 | **Interactive Map** | 🟢 Implemented | Embedded SVG map showing concentric seating sections, playing pitch, and interactive selected pins. |
@@ -175,7 +195,7 @@ graph LR
 | **Incident Management** | 🟢 Implemented | Incident logger + Gemini automated risk summary and Suggested Response. |
 | **Sustainability Center** | 🟢 Implemented | Utility tracking and green HVAC optimization recommendations. |
 | **Transport Intelligence** | 🟢 Implemented | Live metro waits and AI exit path recommendations. |
-| **Firebase Live Sync** | 🟢 Implemented | Frontend clients listen to changes in Firestore data, updating views in real time. |
+| **Supabase Live Sync** | 🟢 Implemented | Frontend clients listen to changes in PostgreSQL tables, updating views in real time. |
 | **Docker Packaging** | 🟢 Implemented | Unified Docker multi-stage container configuration. |
 | **Vitest & Pytest Suite** | 🟢 Implemented | Active backend FastAPI route validation tests and frontend navbar layout tests. |
 | **Digital Twin Visualization** | 🟣 Planned | 3D visual render overlays showing density heatmaps. *(Future Scope)* |
@@ -321,28 +341,27 @@ The application requires configuration via environment files. Never commit produ
 | Variable Name | Required | Description | Default/Fallback |
 | :--- | :--- | :--- | :--- |
 | `GOOGLE_API_KEY` | Yes (for AI) | Google Gemini API access key. | Uses mathematical fallback algorithm if absent. |
-| `FIREBASE_SERVICE_ACCOUNT_PATH` | No | Path to JSON service credential file. | Attempts to use GCP Application Default Credentials. |
+| `DATABASE_URL` | Yes | PostgreSQL Connection String (Neon). | Bypasses RLS for backend data syncs. |
+| `SUPABASE_URL` | Yes | Supabase Project API URL. | Enables connection to the Supabase client. |
+| `SUPABASE_KEY` | Yes | Supabase Anon Key. | Enables client-side Auth and queries. |
 
-### Frontend Configurations (`frontend/.env`)
+### Frontend Configurations (`.env`)
 
 | Variable Name | Required | Description | Fallback (Build-Safe) |
 | :--- | :--- | :--- | :--- |
-| `NEXT_PUBLIC_FIREBASE_API_KEY` | Yes | Firebase client API key. | `AIzaSyDummyKeyForBuildTimePrerendering` |
-| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Yes | Firebase authentication domain. | `dummy-project.firebaseapp.com` |
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Yes | Firebase project ID. | `dummy-project` |
-| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`| Yes | Storage bucket URL. | `dummy-project.appspot.com` |
-| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`| Yes | Messaging service ID. | `1234567890` |
-| `NEXT_PUBLIC_FIREBASE_APP_ID` | Yes | Firebase Web App ID. | `1:1234567890:web:1234567890` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase Project API URL. | `https://dummy.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase Anon Key. | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` |
+| `DATABASE_URL` | Yes | PostgreSQL Connection String (Neon). | Default connection string. |
 
 ---
 
 ## 🚀 Setup & Local Development
 
 ### 📋 Prerequisites
-* **Python**: `3.9` or higher
-* **Node.js**: `18.x` or higher
+* **Python**: `3.14` or higher
+* **Node.js**: `20.x` or higher
 * **Docker**: Deployed for local container testing
-* **Firebase Account**: Access to a Firestore database instance
+* **Supabase / Neon Accounts**: Access to PostgreSQL database instances
 
 ### 1. Setup Backend (FastAPI)
 1. Navigate to the backend directory:
@@ -361,9 +380,15 @@ The application requires configuration via environment files. Never commit produ
 4. Create a `.env` file referencing your keys:
    ```env
    GOOGLE_API_KEY="your-gemini-key"
-   FIREBASE_SERVICE_ACCOUNT_PATH="stadiumos-firebase-cred.json"
+   SUPABASE_URL="https://your-project.supabase.co"
+   SUPABASE_KEY="your-anon-key"
+   DATABASE_URL="postgresql://neondb_owner:password@aws-endpoint.neon.tech/neondb?sslmode=require"
    ```
-5. Spin up the API server:
+5. Run the database setup script to seed tables:
+   ```bash
+   # Run the DDL from schema.sql in both Neon/Supabase SQL consoles
+   ```
+6. Spin up the API server:
    ```bash
    python3 main.py
    ```
@@ -378,14 +403,12 @@ The application requires configuration via environment files. Never commit produ
    ```bash
    npm install
    ```
-3. Create a `.env` file referencing your project:
+3. Create a `.env` file inside the `frontend` folder:
    ```env
-   NEXT_PUBLIC_FIREBASE_API_KEY="your-key"
-   NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="stadiumos.firebaseapp.com"
-   NEXT_PUBLIC_FIREBASE_PROJECT_ID="stadiumos"
-   NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="stadiumos.appspot.com"
-   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="sender-id"
-   NEXT_PUBLIC_FIREBASE_APP_ID="app-id"
+   NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
+   NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"
+   DATABASE_URL="postgresql://neondb_owner:password@aws-endpoint.neon.tech/neondb?sslmode=require"
+   NEXT_PUBLIC_API_URL="http://localhost:8080"
    ```
 4. Start the frontend developer server:
    ```bash
@@ -394,7 +417,7 @@ The application requires configuration via environment files. Never commit produ
    *Open `http://localhost:3000` to interact with the system.*
 
 ### 3. Run Sensor Simulation
-To simulate live stadium sensors updating density values in Firestore, run:
+To simulate live stadium sensors updating density values in the Neon PostgreSQL database, run:
 ```bash
 cd backend
 source venv/bin/activate
@@ -405,9 +428,10 @@ python3 simulate_crowd.py
 
 ## 🛡️ Security Audit
 * **Secrets Separation**: All keys are isolated in local environments via `.env` configurations.
-* **Safe Prompts**: System prompt parameters wrap live Firestore data and strictly sanitize attendee inputs to prevent prompt injection.
+* **Safe Prompts**: System prompt parameters wrap live PostgreSQL data and strictly sanitize attendee inputs to prevent prompt injection.
 * **Pydantic Validation**: Backend models enforce strict string length checks to protect routes from overflow payloads.
 * **CORS Restrictions**: API configuration enforces restricted domains (`localhost:3000`, Cloud Run links) for REST queries.
+* **RLS Policies**: Row Level Security (RLS) is enabled on all PostgreSQL tables to prevent unauthorized data access.
 
 ---
 

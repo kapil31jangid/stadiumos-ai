@@ -1,0 +1,563 @@
+"use client";
+
+import React, { useState, useCallback, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Zap, Eye, EyeOff, Maximize2, Minimize2 } from "lucide-react";
+
+import {
+  STADIUM_ZONES,
+  ZONE_CATEGORY_STYLES,
+  StadiumZoneConfig,
+  getDensityColor,
+  ZoneCategory,
+} from "./stadiumData";
+import { ZoneDetails } from "./ZoneDetails";
+import { MapLegend } from "./MapLegend";
+import { MapControls, MapFilter } from "./MapControls";
+import { AIOverlay } from "./AIOverlay";
+
+import { useDashboard, Zone } from "@/features/dashboard/shared/DashboardContext";
+
+// Mapping from category to filter key
+const CATEGORY_TO_FILTER: Record<ZoneCategory, MapFilter> = {
+  gate:      "crowd",
+  concourse: "crowd",
+  seating:   "crowd",
+  food:      "facilities",
+  vip:       "facilities",
+  restroom:  "facilities",
+  medical:   "medical",
+  parking:   "transport",
+  metro:     "transport",
+  emergency: "incidents",
+  media:     "facilities",
+  pitch:     "all",
+};
+
+// ─── StadiumZone — individual SVG zone renderer ───────────────────────────────
+interface StadiumZoneProps {
+  config: StadiumZoneConfig;
+  liveZone?: Zone;
+  isSelected: boolean;
+  isHighlighted: boolean; // from search
+  isDimmed: boolean;     // filter active but zone doesn't match
+  onClick: () => void;
+  onHover: (id: string | null) => void;
+  hoveredId: string | null;
+}
+
+const StadiumZone: React.FC<StadiumZoneProps> = ({
+  config, liveZone, isSelected, isHighlighted, isDimmed, onClick, onHover, hoveredId
+}) => {
+  const density = liveZone?.current_density ?? 0.3;
+  const densityColor = getDensityColor(density);
+  const catStyle = ZONE_CATEGORY_STYLES[config.category];
+  const isHovered = hoveredId === config.id;
+  const isActive = isSelected || isHovered;
+
+  // Special handling for non-interactive zones
+  const isDecorative = config.category === "pitch" || config.category === "seating";
+
+  // Compute fill: blend category base with density overlay
+  const fillOpacity = isDecorative ? 1 : isDimmed ? 0.15 : isActive ? 0.65 : 0.4;
+  const strokeWidth = isSelected ? 2 : isHighlighted ? 1.5 : isActive ? 1.5 : 1;
+  const strokeOpacity = isDimmed ? 0.2 : 1;
+
+  const commonProps = {
+    fill: isDecorative ? catStyle.baseFill : densityColor,
+    fillOpacity,
+    stroke: isHighlighted ? "#ffffff" : isSelected ? "#ffffff" : catStyle.stroke,
+    strokeWidth,
+    strokeOpacity,
+    onClick: isDecorative ? undefined : onClick,
+    onMouseEnter: isDecorative ? undefined : () => onHover(config.id),
+    onMouseLeave: isDecorative ? undefined : () => onHover(null),
+    style: { cursor: isDecorative ? "default" : "pointer", transition: "fill-opacity 0.3s, stroke-width 0.2s" },
+    role: isDecorative ? undefined : "button",
+    "aria-label": `${config.name} — ${(density * 100).toFixed(0)}% occupancy`,
+    tabIndex: isDecorative ? undefined : 0,
+    onKeyDown: isDecorative ? undefined : (e: React.KeyboardEvent) => { if (e.key === "Enter" || e.key === " ") onClick(); },
+  };
+
+  const g = config.geometry;
+
+  return (
+    <g>
+      {/* Selection glow */}
+      {isSelected && !isDecorative && (
+        <motion.circle
+          cx={config.labelX}
+          cy={config.labelY}
+          r={50}
+          fill={densityColor}
+          fillOpacity={0.08}
+          initial={{ r: 30, opacity: 0 }}
+          animate={{ r: 50, opacity: 1 }}
+          exit={{ opacity: 0 }}
+        />
+      )}
+
+      {/* Zone shape */}
+      {config.svgType === "ellipse" && (
+        <ellipse
+          cx={g.cx as number}
+          cy={g.cy as number}
+          rx={g.rx as number}
+          ry={g.ry as number}
+          {...commonProps}
+        />
+      )}
+      {config.svgType === "rect" && (
+        <rect
+          x={g.x as number}
+          y={g.y as number}
+          width={g.width as number}
+          height={g.height as number}
+          rx={g.rx as number}
+          {...commonProps}
+        />
+      )}
+
+      {/* Density heat overlay (not for decorative) */}
+      {!isDecorative && (
+        config.svgType === "rect" ? (
+          <rect
+            x={(g.x as number) + 2}
+            y={(g.y as number) + 2}
+            width={(g.width as number) - 4}
+            height={(g.height as number) - 4}
+            rx={(g.rx as number) - 2}
+            fill={densityColor}
+            fillOpacity={isDimmed ? 0 : density * 0.18}
+            style={{ pointerEvents: "none", transition: "fill-opacity 0.4s" }}
+          />
+        ) : (
+          <ellipse
+            cx={g.cx as number}
+            cy={g.cy as number}
+            rx={(g.rx as number) - 4}
+            ry={(g.ry as number) - 4}
+            fill={densityColor}
+            fillOpacity={isDimmed ? 0 : density * 0.12}
+            style={{ pointerEvents: "none", transition: "fill-opacity 0.4s" }}
+          />
+        )
+      )}
+
+      {/* Zone icon */}
+      {!isDecorative && (
+        <text
+          x={config.labelX}
+          y={config.labelY - 4}
+          textAnchor="middle"
+          fontSize={isActive ? "13" : "11"}
+          style={{ pointerEvents: "none", transition: "font-size 0.15s", userSelect: "none" }}
+        >
+          {catStyle.icon}
+        </text>
+      )}
+
+      {/* Zone label */}
+      {!isDecorative && (
+        <text
+          x={config.labelX}
+          y={config.labelY + 12}
+          textAnchor="middle"
+          fill={isDimmed ? "#3f3f46" : isActive ? "#ffffff" : "#a1a1aa"}
+          fontSize={isActive ? "8.5" : "7.5"}
+          fontWeight={isActive ? "700" : "500"}
+          style={{ pointerEvents: "none", transition: "fill 0.2s, font-size 0.15s", userSelect: "none" }}
+        >
+          {config.shortName}
+        </text>
+      )}
+
+      {/* Pitch label */}
+      {config.category === "pitch" && (
+        <>
+          {/* Center circle */}
+          <circle cx={500} cy={350} r={40} fill="none" stroke="#166534" strokeWidth="1" strokeOpacity="0.5" />
+          {/* Center spot */}
+          <circle cx={500} cy={350} r={3} fill="#166534" fillOpacity="0.6" />
+          {/* Halfway line */}
+          <line x1={500} y1={242} x2={500} y2={458} stroke="#166534" strokeWidth="0.8" strokeOpacity="0.4" />
+          {/* Goal areas */}
+          <rect x={310} y={310} width={40} height={80} fill="none" stroke="#166534" strokeWidth="0.6" strokeOpacity="0.4" />
+          <rect x={650} y={310} width={40} height={80} fill="none" stroke="#166534" strokeWidth="0.6" strokeOpacity="0.4" />
+          <text x={500} y={357} textAnchor="middle" fill="#166534" fontSize="9" fontWeight="600" fillOpacity="0.6" style={{ userSelect: "none" }}>PITCH</text>
+        </>
+      )}
+
+      {/* Density % badge (shown for active zones) */}
+      {!isDecorative && isActive && (
+        <g>
+          <rect
+            x={config.labelX - 15}
+            y={config.labelY + 16}
+            width={30}
+            height={13}
+            rx={4}
+            fill={densityColor}
+            fillOpacity={0.9}
+          />
+          <text
+            x={config.labelX}
+            y={config.labelY + 25.5}
+            textAnchor="middle"
+            fill="#000"
+            fontSize="7"
+            fontWeight="800"
+            style={{ userSelect: "none" }}
+          >
+            {(density * 100).toFixed(0)}%
+          </text>
+        </g>
+      )}
+    </g>
+  );
+};
+
+// ─── Main StadiumMap component ─────────────────────────────────────────────────
+interface StadiumMapProps {
+  compact?: boolean;
+}
+
+export const StadiumMap: React.FC<StadiumMapProps> = ({ compact = false }) => {
+  const {
+    user, zones, incidents, matchPhase, theme, setActiveTab, weather
+  } = useDashboard();
+
+  const role = user?.role || "fan";
+
+  const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
+  const [hoveredZoneId, setHoveredZoneId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [activeFilter, setActiveFilter] = useState<MapFilter>("all");
+  const [showAIOverlay, setShowAIOverlay] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Filter zones by role
+  const visibleZones = useMemo(
+    () => STADIUM_ZONES.filter((z) => z.visibleTo.includes(role) || role === "organizer"),
+    [role]
+  );
+
+  // Live data lookup
+  const getLiveZone = useCallback(
+    (id: string): Zone | undefined => zones.find((z) => z.id === id),
+    [zones]
+  );
+
+  // Search results
+  const searchResults = useMemo(() => {
+    if (!search.trim()) return [];
+    const q = search.toLowerCase();
+    return visibleZones
+      .filter((z) =>
+        z.name.toLowerCase().includes(q) ||
+        z.shortName.toLowerCase().includes(q) ||
+        z.category.toLowerCase().includes(q) ||
+        z.facilities.some((f) => f.toLowerCase().includes(q))
+      )
+      .map((z) => ({
+        id: z.id,
+        name: z.name,
+        icon: ZONE_CATEGORY_STYLES[z.category].icon,
+      }));
+  }, [search, visibleZones]);
+
+  const handleSelectResult = (id: string) => {
+    setSelectedZoneId(id);
+    setSearch("");
+  };
+
+  const handleClearSearch = () => {
+    setSearch("");
+    setSelectedZoneId(null);
+  };
+
+  const isDimmed = (zone: StadiumZoneConfig): boolean => {
+    if (activeFilter === "all") return false;
+    return CATEGORY_TO_FILTER[zone.category] !== activeFilter;
+  };
+
+  const isHighlighted = (zone: StadiumZoneConfig): boolean => {
+    if (!search) return false;
+    return searchResults.some((r) => r.id === zone.id);
+  };
+
+  const selectedZoneConfig = selectedZoneId
+    ? STADIUM_ZONES.find((z) => z.id === selectedZoneId) ?? null
+    : null;
+
+  // Weather indicator overlay
+  const weatherInfo: Record<string, { icon: string; color: string }> = {
+    Sunny: { icon: "☀️", color: "#fbbf24" },
+    Rainy: { icon: "🌧", color: "#60a5fa" },
+    Windy: { icon: "💨", color: "#a1a1aa" },
+    Clear: { icon: "🌙", color: "#818cf8" },
+  };
+  const weatherDisplay = weatherInfo[weather] || weatherInfo.Clear;
+
+  return (
+    <div className={`flex flex-col gap-4 ${isFullscreen ? "fixed inset-0 z-50 p-6 bg-zinc-950/98 backdrop-blur-xl" : ""}`}>
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-indigo-500/10 rounded-xl border border-indigo-500/20">
+            <span className="text-lg">🏟</span>
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-white leading-tight">Stadium Operations Map</h2>
+            <p className="text-[10px] text-zinc-500 mt-0.5">
+              Live zone intelligence · {matchPhase.replace("_", " ")} &nbsp;·&nbsp;
+              <span style={{ color: weatherDisplay.color }}>{weatherDisplay.icon} {weather}</span>
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* AI overlay toggle */}
+          <button
+            onClick={() => setShowAIOverlay((v) => !v)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold border transition-all ${
+              showAIOverlay
+                ? "bg-purple-900/30 border-purple-500/30 text-purple-400"
+                : "bg-zinc-900 border-zinc-800 text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            <Zap className="w-3 h-3" />
+            AI Overlay
+          </button>
+          {/* Fullscreen toggle */}
+          <button
+            onClick={() => setIsFullscreen((v) => !v)}
+            className="p-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-500 hover:text-white hover:border-zinc-700 transition-all"
+            aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          >
+            {isFullscreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+      </div>
+
+      {/* ── Controls ── */}
+      <MapControls
+        search={search}
+        onSearch={setSearch}
+        activeFilter={activeFilter}
+        onFilter={setActiveFilter}
+        searchResults={searchResults}
+        onSelectResult={handleSelectResult}
+        onClearSearch={handleClearSearch}
+      />
+
+      {/* ── Map + Details ── */}
+      <div className="flex gap-4 flex-col lg:flex-row">
+        {/* SVG Map Container */}
+        <div className={`relative flex-1 bg-zinc-950 border border-zinc-800 rounded-3xl overflow-hidden ${isFullscreen ? "flex-1" : ""}`}
+          style={{ minHeight: compact ? 360 : 480 }}
+        >
+          {/* Grid background */}
+          <svg
+            className="absolute inset-0 w-full h-full opacity-20"
+            preserveAspectRatio="xMidYMid meet"
+          >
+            <defs>
+              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#27272a" strokeWidth="0.5" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+
+          {/* Main Stadium SVG */}
+          <svg
+            viewBox="0 0 1000 700"
+            className="w-full h-full"
+            preserveAspectRatio="xMidYMid meet"
+            aria-label="Interactive Stadium Operations Map"
+            role="application"
+          >
+            <defs>
+              {/* Gradient definitions for outer ring */}
+              <radialGradient id="outerGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%" stopColor="#1e2030" stopOpacity="0" />
+                <stop offset="100%" stopColor="#0d0f14" stopOpacity="1" />
+              </radialGradient>
+
+              {/* Clip path for map bounds */}
+              <clipPath id="mapBounds">
+                <rect x="0" y="0" width="1000" height="700" />
+              </clipPath>
+
+              {/* Glow filter for selected zones */}
+              <filter id="glowFilter" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="4" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+
+            {/* ── Outer stadium ring ── */}
+            <ellipse
+              cx={500} cy={350} rx={390} ry={285}
+              fill="#0d0f14"
+              stroke="#27272a"
+              strokeWidth="2"
+              strokeDasharray="12 6"
+            />
+
+            {/* ── Zones rendering — ordered: background first ── */}
+            {/* 1. Concourse (largest ellipse, drawn before seating) */}
+            {visibleZones
+              .filter((z) => z.id === "concourse_1")
+              .map((z) => (
+                <StadiumZone
+                  key={z.id}
+                  config={z}
+                  liveZone={getLiveZone(z.id)}
+                  isSelected={selectedZoneId === z.id}
+                  isHighlighted={isHighlighted(z)}
+                  isDimmed={isDimmed(z)}
+                  onClick={() => setSelectedZoneId(z.id === selectedZoneId ? null : z.id)}
+                  onHover={setHoveredZoneId}
+                  hoveredId={hoveredZoneId}
+                />
+              ))}
+
+            {/* 2. Seating bowl */}
+            {visibleZones
+              .filter((z) => z.id === "seating_bowl")
+              .map((z) => (
+                <StadiumZone
+                  key={z.id}
+                  config={z}
+                  liveZone={getLiveZone(z.id)}
+                  isSelected={selectedZoneId === z.id}
+                  isHighlighted={isHighlighted(z)}
+                  isDimmed={isDimmed(z)}
+                  onClick={() => setSelectedZoneId(z.id === selectedZoneId ? null : z.id)}
+                  onHover={setHoveredZoneId}
+                  hoveredId={hoveredZoneId}
+                />
+              ))}
+
+            {/* 3. Pitch */}
+            {visibleZones
+              .filter((z) => z.id === "pitch")
+              .map((z) => (
+                <StadiumZone
+                  key={z.id}
+                  config={z}
+                  liveZone={undefined}
+                  isSelected={false}
+                  isHighlighted={false}
+                  isDimmed={false}
+                  onClick={() => {}}
+                  onHover={() => {}}
+                  hoveredId={null}
+                />
+              ))}
+
+            {/* 4. All remaining zones */}
+            {visibleZones
+              .filter((z) => !["concourse_1", "seating_bowl", "pitch"].includes(z.id))
+              .map((z) => (
+                <StadiumZone
+                  key={z.id}
+                  config={z}
+                  liveZone={getLiveZone(z.id)}
+                  isSelected={selectedZoneId === z.id}
+                  isHighlighted={isHighlighted(z)}
+                  isDimmed={isDimmed(z)}
+                  onClick={() => setSelectedZoneId(z.id === selectedZoneId ? null : z.id)}
+                  onHover={setHoveredZoneId}
+                  hoveredId={hoveredZoneId}
+                />
+              ))}
+
+            {/* ── AI Overlay ── */}
+            <AnimatePresence>
+              {showAIOverlay && (
+                <AIOverlay
+                  matchPhase={matchPhase}
+                  zones={zones}
+                  visible={showAIOverlay}
+                />
+              )}
+            </AnimatePresence>
+
+            {/* ── Compass Rose ── */}
+            <g transform="translate(950, 640)">
+              <circle cx="0" cy="0" r="14" fill="#09090b" stroke="#27272a" strokeWidth="1" />
+              <text x="0" y="-5" textAnchor="middle" fill="#52525b" fontSize="6" fontWeight="700">N</text>
+              <text x="0" y="10" textAnchor="middle" fill="#52525b" fontSize="6">S</text>
+              <text x="-8" y="3" textAnchor="middle" fill="#52525b" fontSize="6">W</text>
+              <text x="8" y="3" textAnchor="middle" fill="#52525b" fontSize="6">E</text>
+              <line x1="0" y1="-3" x2="0" y2="-10" stroke="#52525b" strokeWidth="1" />
+            </g>
+
+            {/* ── Phase label ── */}
+            <g>
+              <rect x="10" y="10" width={matchPhase.replace("_", " ").length * 7 + 20} height="20" rx="6" fill="#18181b" stroke="#3f3f46" strokeWidth="0.8" />
+              <text x="20" y="24" fill="#a1a1aa" fontSize="8" fontWeight="700">
+                {matchPhase.replace("_", " ")}
+              </text>
+            </g>
+          </svg>
+
+          {/* Zone Details panel (inside map container) */}
+          <AnimatePresence>
+            {selectedZoneConfig && (
+              <ZoneDetails
+                zone={selectedZoneConfig}
+                liveZone={getLiveZone(selectedZoneConfig.id)}
+                role={role}
+                matchPhase={matchPhase}
+                incidents={incidents}
+                onClose={() => setSelectedZoneId(null)}
+                onAIChat={() => setActiveTab("ai_assistant")}
+              />
+            )}
+          </AnimatePresence>
+
+          {/* Click-outside close helper */}
+          {selectedZoneId && (
+            <div
+              className="absolute inset-0 z-10"
+              style={{ pointerEvents: "none" }}
+            />
+          )}
+        </div>
+
+        {/* ── Legend (sidebar on desktop, below on mobile) ── */}
+        <div className="lg:w-48 flex-shrink-0">
+          <MapLegend className="w-full" />
+
+          {/* Quick stats */}
+          <div className="mt-3 bg-zinc-950/90 border border-zinc-800 rounded-2xl p-4 space-y-2.5">
+            <div className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">Quick Stats</div>
+            {zones.slice(0, 4).map((z) => {
+              const config = STADIUM_ZONES.find((s) => s.id === z.id);
+              const color = getDensityColor(z.current_density);
+              return (
+                <div key={z.id} className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                  <span className="text-[9px] text-zinc-500 flex-1 truncate">{config?.shortName || z.name}</span>
+                  <span className="text-[9px] font-mono" style={{ color }}>{(z.current_density * 100).toFixed(0)}%</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Role-specific hint bar ── */}
+      <div className="text-[10px] text-zinc-600 text-center">
+        {role === "fan" && "Tap a zone to see wait times, facilities and navigation help."}
+        {role === "volunteer" && "Your assigned zones are highlighted. Tap to view help requests and tasks."}
+        {role === "security" && "Crowd alerts and restricted zones are shown. Tap for incident details."}
+        {role === "organizer" && "Full stadium overview with AI recommendations. All zones are visible."}
+        {role === "venue_staff" && "Tap zones to view maintenance requests and utility status."}
+      </div>
+    </div>
+  );
+};
