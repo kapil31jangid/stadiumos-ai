@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import dynamic from "next/dynamic";
 import { useDashboard, MatchPhase } from "./DashboardContext";
+import { DashboardSidebar } from "./DashboardSidebar";
 
 const ChatInterface = dynamic(() => import("@/components/ChatInterface").then((mod) => mod.ChatInterface), {
   ssr: false,
@@ -25,7 +26,6 @@ const Heatmap = dynamic(() => import("@/components/Heatmap").then((mod) => mod.H
 import { 
   Languages, 
   Sliders, 
-  LogOut, 
   Users, 
   Bot, 
   Clock, 
@@ -159,7 +159,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     setAccessContrast,
     accessTextSize,
     setAccessTextSize,
-    handleSignOut,
     incidents,
     newIncident,
     setNewIncident,
@@ -192,55 +191,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
 
   if (!user) return null;
 
-  const getSidebarLinks = (role: string) => {
-    switch (role) {
-      case "fan":
-        return [
-          { id: "dashboard", label: "Dashboard", icon: Activity },
-          { id: "navigation", label: "Navigation", icon: MapPin },
-          { id: "tickets", label: "Tickets", icon: Sliders },
-          { id: "transport", label: "Transport", icon: Clock },
-          { id: "ai_assistant", label: "AI Assistant", icon: Bot },
-        ];
-      case "volunteer":
-        return [
-          { id: "dashboard", label: "Dashboard", icon: Activity },
-          { id: "tasks", label: "Tasks", icon: Sliders },
-          { id: "incidents", label: "Incidents", icon: AlertTriangle },
-          { id: "translation", label: "Translation", icon: Languages },
-          { id: "ai_assistant", label: "AI Assistant", icon: Bot },
-        ];
-      case "security":
-        return [
-          { id: "dashboard", label: "Dashboard", icon: Activity },
-          { id: "safety", label: "Safety", icon: Shield },
-          { id: "cctv", label: "CCTV", icon: MonitorPlay },
-          { id: "risks", label: "Risks", icon: AlertTriangle },
-          { id: "ai_assistant", label: "AI Risks", icon: Bot },
-        ];
-      case "organizer":
-        return [
-          { id: "dashboard", label: "Dashboard", icon: Activity },
-          { id: "operations", label: "Operations", icon: Sliders },
-          { id: "announcements", label: "Announcements", icon: Bell },
-          { id: "analytics", label: "Analytics", icon: BarChart3 },
-          { id: "resources", label: "Resources", icon: Users },
-          { id: "ai_assistant", label: "AI Command Center", icon: Bot },
-        ];
-      case "venue_staff":
-        return [
-          { id: "dashboard", label: "Dashboard", icon: Activity },
-          { id: "maintenance", label: "Maintenance", icon: Wrench },
-          { id: "facilities", label: "Facilities", icon: Zap },
-          { id: "sustainability", label: "Sustainability", icon: Leaf },
-          { id: "ai_assistant", label: "AI Suggestions", icon: Bot },
-        ];
-      default:
-        return [];
-    }
-  };
-
-  const links = getSidebarLinks(user.role);
   const filteredZones = ZONE_DIRECTORY.filter(z =>
     z.name.toLowerCase().includes(zoneFilter.toLowerCase()) ||
     z.type.toLowerCase().includes(zoneFilter.toLowerCase()) ||
@@ -251,160 +201,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     <div className={`min-h-screen bg-[#07070a] text-zinc-100 font-sans flex selection:bg-cyan-500/30 overflow-x-hidden ${accessContrast ? "high-contrast" : ""}`}>
       
       {/* ================= LEFT SIDEBAR ================= */}
-      <aside 
-        role="complementary" 
-        className="w-64 md:w-72 bg-[#09090c] border-r border-zinc-800/80 flex flex-col justify-between shrink-0 h-screen sticky top-0 z-30"
-      >
-        <div className="p-6 space-y-8 overflow-y-auto max-h-[85vh] scrollbar-none">
-          
-          {/* Brand Logo & Notification Bell */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-extrabold italic tracking-wider text-cyan-400 font-sans">STADIUMOS</h1>
-              <Badge variant="outline" className="border-cyan-500/20 text-[9px] text-cyan-400 uppercase tracking-widest font-mono">V2</Badge>
-            </div>
-            <button 
-              onClick={() => setShowNotifDrawer(prev => !prev)}
-              className="relative p-2 rounded-lg border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-800 transition-colors text-zinc-400 hover:text-white"
-              title="Operational Alerts Feed"
-            >
-              <Bell className="w-4 h-4" />
-              {notifications.length > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white animate-pulse">
-                  {notifications.length}
-                </span>
-              )}
-            </button>
-          </div>
-
-          {/* Real-time Simulator Widgets */}
-          <div className="bg-zinc-950 border border-zinc-900 rounded-2xl p-3 space-y-2">
-            <div className="flex items-center justify-between text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
-              <span>Simulation State</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-ping" />
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              {/* Weather Cycler */}
-              <button
-                onClick={() => {
-                  const weathers: ("Sunny" | "Rainy" | "Windy" | "Clear")[] = ["Sunny", "Rainy", "Windy", "Clear"];
-                  const nextIndex = (weathers.indexOf(weather) + 1) % weathers.length;
-                  setWeather(weathers[nextIndex]);
-                }}
-                className="flex items-center gap-1.5 p-2 bg-zinc-900/60 hover:bg-zinc-900 border border-zinc-850 rounded-xl text-left transition-colors"
-                title="Click to cycle weather"
-              >
-                <span className="text-sm">
-                  {weather === "Sunny" ? "☀️" : weather === "Rainy" ? "🌧️" : weather === "Windy" ? "💨" : "🌙"}
-                </span>
-                <span className="text-[10px] text-zinc-300 font-semibold truncate">{weather}</span>
-              </button>
-
-              {/* Match Phase Cycler */}
-              <button
-                onClick={() => {
-                  const phases: ("PRE_MATCH" | "FIRST_HALF" | "HALFTIME" | "SECOND_HALF" | "POST_MATCH")[] = [
-                    "PRE_MATCH", "FIRST_HALF", "HALFTIME", "SECOND_HALF", "POST_MATCH"
-                  ];
-                  const nextIndex = (phases.indexOf(matchPhase) + 1) % phases.length;
-                  setMatchPhase(phases[nextIndex]);
-                }}
-                className="flex items-center gap-1.5 p-2 bg-zinc-900/60 hover:bg-zinc-900 border border-zinc-850 rounded-xl text-left transition-colors font-sans"
-                title="Click to cycle match phase"
-              >
-                <span className="text-xs">🕒</span>
-                <span className="text-[9px] text-zinc-300 font-bold uppercase tracking-wider truncate">
-                  {matchPhase === "PRE_MATCH" ? "Pre-Match" :
-                   matchPhase === "FIRST_HALF" ? "1st Half" :
-                   matchPhase === "HALFTIME" ? "Halftime" :
-                   matchPhase === "SECOND_HALF" ? "2nd Half" : "Post-Match"}
-                </span>
-              </button>
-            </div>
-          </div>
-
-          {/* User details */}
-          <div className="flex items-center gap-3 p-3 bg-zinc-900/50 rounded-xl border border-zinc-800/40 relative">
-            <div className={`w-10 h-10 rounded-full bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md`}>
-              {user.name.substring(0, 2).toUpperCase()}
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="text-xs font-semibold text-zinc-200 truncate">{user.name}</div>
-              <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider truncate flex items-center gap-1 mt-0.5">
-                <span className={`w-1.5 h-1.5 rounded-full ${theme.text.replace("text-", "bg-")}`} />
-                {user.role ? user.role.replace("_", " ") : "Configuring"}
-              </div>
-            </div>
-          </div>
-
-          {/* Language Selector */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest flex items-center gap-1.5">
-              <Languages className="w-3.5 h-3.5 text-cyan-400" /> Language / Idioma
-            </label>
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value as "en" | "es" | "fr" | "ar" | "hi" | "ja")}
-              className="w-full bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 p-2.5 rounded-lg focus:outline-none focus:border-cyan-500/50 transition-colors"
-            >
-              <option value="en">English (US)</option>
-              <option value="es">Español (ES)</option>
-              <option value="fr">Français (FR)</option>
-              <option value="ar">العربية (AR)</option>
-              <option value="hi">हिन्दी (HI)</option>
-              <option value="ja">日本語 (JA)</option>
-            </select>
-          </div>
-
-          {/* Navigation links */}
-          <nav className="space-y-1" aria-label="Sidebar Menu">
-            {links.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  aria-current={isActive ? "page" : undefined}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                    isActive 
-                      ? `${theme.text} ${theme.lightBg} border-l-2 ${theme.border.replace("border-", "border-l-")}` 
-                      : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/40"
-                  }`}
-                >
-                  <Icon className={`w-4 h-4 ${isActive ? theme.text : "text-zinc-500"}`} />
-                  {tab.label}
-                </button>
-              );
-            })}
-            <button
-              onClick={() => setActiveTab("settings")}
-              aria-current={activeTab === "settings" ? "page" : undefined}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all ${
-                activeTab === "settings"
-                  ? `${theme.text} ${theme.lightBg} border-l-2 ${theme.border.replace("border-", "border-l-")}`
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/40"
-              }`}
-            >
-              <SettingsIcon className={`w-4 h-4 ${activeTab === "settings" ? theme.text : "text-zinc-500"}`} />
-              {t("settings")}
-            </button>
-          </nav>
-        </div>
-
-        {/* Footer logout */}
-        <div className="p-6 border-t border-zinc-900">
-          <button 
-            onClick={handleSignOut}
-            aria-label="Sign out of StadiumOS"
-            className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-xs font-semibold text-zinc-500 hover:text-red-400 hover:bg-zinc-900/40 transition-all"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            Sign Out
-          </button>
-        </div>
-      </aside>
+      <DashboardSidebar setShowNotifDrawer={setShowNotifDrawer} />
 
       {/* ================= MAIN CONTENT ================= */}
       <main id="main-content" className="flex-1 min-w-0 p-6 md:p-8 overflow-y-auto h-screen relative">
