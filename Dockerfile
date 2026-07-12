@@ -1,48 +1,37 @@
-# syntax=docker/dockerfile:1
-
-# ---------- Stage 1: build the frontend ----------
-FROM node:20-slim AS frontend-build
+# Stage 1: Build the frontend
+FROM node:20-alpine AS frontend-builder
 WORKDIR /frontend
 COPY frontend/package*.json ./
-RUN npm ci --no-audit --no-fund
+RUN npm install
 COPY frontend/ ./
+# Build with static export (requires next.config.ts output: 'export')
 RUN npm run build
-# produces /frontend/dist
 
-# ---------- Stage 2: backend runtime ----------
-FROM python:3.12-slim AS backend
-
-# Prevent Python from writing .pyc files / buffering stdout (cleaner Cloud Run logs)
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    PORT=8080
-
+# Stage 2: Build the backend and integrate frontend
+FROM python:3.10-slim
 WORKDIR /app
 
-# System deps kept minimal for a small, fast, low-attack-surface image
+# Install system dependencies if needed (e.g., for certain python libs)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        curl \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python deps first for better layer caching
-COPY backend/requirements.txt ./requirements.txt
+# Copy backend requirements and install
+COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend source
-COPY backend/app ./app
+# Copy backend source code
+COPY backend/*.py ./
 
-# Copy built frontend static assets from stage 1
-COPY --from=frontend-build /frontend/dist ./app/static
+# Create static directory and copy frontend build from Stage 1
+RUN mkdir -p static
+COPY --from=frontend-builder /frontend/out ./static/
 
-# Run as non-root user (security requirement)
-RUN useradd --create-home --uid 10001 appuser \
-    && chown -R appuser:appuser /app
-USER appuser
+# Set environment variables
+ENV PYTHONUNBUFFERED=TRUE
+ENV PORT=8080
 
+# Cloud Run defaults to PORT 8080
 EXPOSE 8080
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD curl -f http://localhost:${PORT}/health || exit 1
-
-# Single worker is fine for Cloud Run (it scales via container instances, not in-process workers)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["python", "main.py"]
