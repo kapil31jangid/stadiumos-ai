@@ -4,16 +4,13 @@ import React from "react";
 import { useDashboard } from "../shared/DashboardContext";
 import { SharedWidget } from "../shared/SharedWidget";
 import { 
-  Sliders, 
   Users, 
   Clock, 
   Map, 
   Bell, 
-  Flame, 
   Bot, 
   Activity, 
-  Wrench,
-  ChevronRight
+  Wrench
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { SVGChart } from "@/components/SVGChart";
@@ -23,7 +20,6 @@ export const OrganizerDashboard: React.FC = () => {
   const {
     metrics,
     zones,
-    queues,
     announcementInputs,
     setAnnouncementInputs,
     handleGenerateAnnouncement,

@@ -15,9 +15,7 @@ function DashboardCore() {
     isRolePickerOpen,
     setIsRolePickerOpen,
     handleRoleSelection,
-    handleJudgeAutoLogin,
-    t,
-    accessContrast
+    t
   } = useDashboard();
 
   // Local Form States
@@ -66,8 +64,9 @@ function DashboardCore() {
         if (error) throw error;
         toast.success("Account created! Check your email to confirm.");
       }
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err) {
+      const error = err as Error;
+      toast.error(error.message);
     }
   };
 

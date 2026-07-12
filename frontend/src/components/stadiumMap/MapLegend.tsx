@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { getDensityColor } from "./stadiumData";
+
 
 interface MapLegendProps {
   className?: string;

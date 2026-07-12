@@ -3,7 +3,7 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  X, Users, Clock, AlertTriangle, Zap, MapPin,
+  X, Users, Clock, Zap, MapPin,
   Heart, Train, Bot, ChevronRight, Shield, Wrench
 } from "lucide-react";
 import { StadiumZoneConfig, getDensityColor, getDensityLabel, getRiskLevel, ZONE_CATEGORY_STYLES } from "./stadiumData";

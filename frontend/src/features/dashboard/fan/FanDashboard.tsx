@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useDashboard } from "../shared/DashboardContext";
 import { SharedWidget } from "../shared/SharedWidget";
 import { 
@@ -11,11 +11,8 @@ import {
   Compass, 
   FolderOpen, 
   Eye, 
-  QrCode, 
   Bot, 
-  Flame,
-  Check,
-  ChevronRight
+  Flame
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { SVGChart } from "@/components/SVGChart";
@@ -23,7 +20,6 @@ import { SVGChart } from "@/components/SVGChart";
 export const FanDashboard: React.FC = () => {
   const {
     metrics,
-    timeLeft,
     searchQuery,
     setSearchQuery,
     setActiveTab,
@@ -42,14 +38,45 @@ export const FanDashboard: React.FC = () => {
     setAccessContrast,
     accessTextSize,
     setAccessTextSize,
-    lostItems,
     lostItemInput,
     setLostItemInput,
     handleReportLostItem,
     theme,
     chartHistory,
-    zones
+    zones,
+    matchPhase
   } = useDashboard();
+
+  const [timeLeft, setTimeLeft] = useState({ hrs: 2, min: 42, sec: 15 });
+
+  // Reset timer on match phase changes
+  // Reset timer when match phase changes
+  useEffect(() => {
+    let timeObj = { hrs: 2, min: 42, sec: 15 };
+    switch (matchPhase) {
+      case "PRE_MATCH":  timeObj = { hrs: 2, min: 42, sec: 15 }; break;
+      case "FIRST_HALF": timeObj = { hrs: 0, min: 25, sec: 0 }; break;
+      case "HALFTIME":   timeObj = { hrs: 0, min: 15, sec: 0 }; break;
+      case "SECOND_HALF": timeObj = { hrs: 0, min: 72, sec: 0 }; break;
+      case "POST_MATCH": timeObj = { hrs: 0, min: 45, sec: 0 }; break;
+    }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTimeLeft(timeObj);
+  }, [matchPhase]);
+
+  // Countdown timer tick
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev.sec > 0) return { ...prev, sec: prev.sec - 1 };
+        if (prev.min > 0) return { ...prev, min: prev.min - 1, sec: 59 };
+        if (prev.hrs > 0) return { hrs: prev.hrs - 1, min: 59, sec: 59 };
+        clearInterval(interval);
+        return prev;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -65,7 +92,7 @@ export const FanDashboard: React.FC = () => {
           <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white mt-1">
             Championship Kick-off
           </h2>
-          <p className="text-xs text-zinc-400">Today's Match: Argentina vs France</p>
+          <p className="text-xs text-zinc-400">Today&apos;s Match: Argentina vs France</p>
         </div>
 
         {/* Counter block */}
@@ -319,7 +346,7 @@ export const FanDashboard: React.FC = () => {
               <span className="text-[9px] text-zinc-500 font-bold uppercase">Size</span>
               <select 
                 value={accessTextSize} 
-                onChange={(e) => setAccessTextSize(e.target.value as any)}
+                onChange={(e) => setAccessTextSize(e.target.value as "normal" | "large" | "huge")}
                 className={`bg-transparent ${theme.text} font-bold outline-none`}
               >
                 <option value="normal">A</option>

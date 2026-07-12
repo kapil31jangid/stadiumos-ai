@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Search, Filter, X, Layers, Navigation } from "lucide-react";
+import { Search, X } from "lucide-react";
 
 export type MapFilter = "all" | "crowd" | "incidents" | "facilities" | "transport" | "medical" | "volunteers";
 

@@ -186,11 +186,11 @@ export const VolunteerDashboard: React.FC = () => {
           <div className="space-y-2 text-xs">
             <div className="p-2.5 bg-zinc-950/60 border border-zinc-850 rounded-xl">
               <strong className="text-zinc-400 block">English:</strong>
-              <span>"Please move to Concourse B, elevator access is on the right."</span>
+              <span>&quot;Please move to Concourse B, elevator access is on the right.&quot;</span>
             </div>
             <div className="p-2.5 bg-zinc-950/60 border border-zinc-850 rounded-xl">
               <strong className={`${theme.text} block`}>Spanish:</strong>
-              <span>"Por favor diríjase al Concourse B, el ascensor está a la derecha."</span>
+              <span>&quot;Por favor diríjase al Concourse B, el ascensor está a la derecha.&quot;</span>
             </div>
           </div>
         </SharedWidget>

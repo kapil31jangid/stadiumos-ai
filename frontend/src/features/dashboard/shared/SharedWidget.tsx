@@ -5,7 +5,7 @@ import { useDashboard } from "./DashboardContext";
 
 interface SharedWidgetProps {
   title: string;
-  icon: React.ComponentType<any>;
+  icon: React.ElementType;
   badge?: string;
   className?: string;
   children: React.ReactNode;

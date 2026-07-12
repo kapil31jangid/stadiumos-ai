@@ -76,7 +76,7 @@ export const ChatInterface: React.FC = () => {
     if (context?.user?.role) {
       userRole = context.user.role;
     }
-  } catch (e) {
+  } catch {
     // fallback if context is not present
   }
 
@@ -91,7 +91,7 @@ export const ChatInterface: React.FC = () => {
 
   useEffect(() => {
     setMessages([{ role: "assistant", content: config.greeting }]);
-  }, [userRole]);
+  }, [userRole, config.greeting]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -122,7 +122,7 @@ export const ChatInterface: React.FC = () => {
         if (sessionData?.session?.access_token) {
           token = sessionData.session.access_token;
         }
-      } catch (e) {
+      } catch {
         // fallback
       }
 

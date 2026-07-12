@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -307,7 +307,6 @@ interface DashboardContextProps {
   setActiveTab: (tab: string) => void;
   isAIOpen: boolean;
   setIsAIOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  timeLeft: { hrs: number; min: number; sec: number };
   joinedQueue: "burger" | "brews" | null;
   setJoinedQueue: React.Dispatch<React.SetStateAction<"burger" | "brews" | null>>;
   queuePosition: number;
@@ -407,9 +406,6 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [isAIOpen, setIsAIOpen] = useState(false);
   
-  // Countdown Timer
-  const [timeLeft, setTimeLeft] = useState({ hrs: 2, min: 42, sec: 15 });
-  
   const [joinedQueue, setJoinedQueue] = useState<"burger" | "brews" | null>(null);
   const [queuePosition, setQueuePosition] = useState(42);
   const [queueWaitTime, setQueueWaitTime] = useState(24);
@@ -460,9 +456,9 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     volunteer: [20, 28, 35, 45, 52, 68, 72]
   });
 
-  const t = (key: string): string => {
+  const t = useCallback((key: string): string => {
     return TRANSLATIONS[language]?.[key] || TRANSLATIONS["en"]?.[key] || key;
-  };
+  }, [language]);
 
   const getApiUrl = (path: string) => {
     if (typeof window !== "undefined" && window.location.port === "3000") {
@@ -473,7 +469,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   // Language & Pref sync
-  const setLanguage = async (lang: "en" | "es" | "fr" | "ar" | "hi" | "ja") => {
+  const setLanguage = useCallback(async (lang: "en" | "es" | "fr" | "ar" | "hi" | "ja") => {
     setLanguageState(lang);
     if (user && isSupabaseConfigured) {
       try {
@@ -482,9 +478,9 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         console.error("Failed to update language:", e);
       }
     }
-  };
+  }, [user]);
 
-  const syncPreference = async (key: string, value: any) => {
+  const syncPreference = useCallback(async (key: string, value: boolean | string) => {
     if (user && isSupabaseConfigured) {
       try {
         const newPrefs = {
@@ -500,25 +496,26 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         console.error(`Failed to update pref ${key}:`, e);
       }
     }
-  };
+  }, [user, accessStairs, accessElevator, accessWheelchair, accessContrast, accessTextSize]);
 
-  const setAccessStairs = (val: boolean) => { setAccessStairsState(val); syncPreference("accessStairs", val); };
-  const setAccessElevator = (val: boolean) => { setAccessElevatorState(val); syncPreference("accessElevator", val); };
-  const setAccessWheelchair = (val: boolean) => { setAccessWheelchairState(val); syncPreference("accessWheelchair", val); };
-  const setAccessContrast = (val: boolean) => { setAccessContrastState(val); syncPreference("accessContrast", val); };
-  const setAccessTextSize = (val: "normal" | "large" | "huge") => { setAccessTextSizeState(val); syncPreference("accessTextSize", val); };
+  const setAccessStairs = useCallback((val: boolean) => { setAccessStairsState(val); void syncPreference("accessStairs", val); }, [syncPreference]);
+  const setAccessElevator = useCallback((val: boolean) => { setAccessElevatorState(val); void syncPreference("accessElevator", val); }, [syncPreference]);
+  const setAccessWheelchair = useCallback((val: boolean) => { setAccessWheelchairState(val); void syncPreference("accessWheelchair", val); }, [syncPreference]);
+  const setAccessContrast = useCallback((val: boolean) => { setAccessContrastState(val); void syncPreference("accessContrast", val); }, [syncPreference]);
+  const setAccessTextSize = useCallback((val: "normal" | "large" | "huge") => { setAccessTextSizeState(val); void syncPreference("accessTextSize", val); }, [syncPreference]);
 
-  const syncProfile = async (sbUser: any) => {
+  const syncProfile = async (sbUser: { id: string; email?: string }) => {
     try {
       const { data } = await supabase.from("profiles").select("*").eq("id", sbUser.id).single();
       if (data) {
         setUser({
           uid: data.id,
-          email: data.email,
+          email: data.email || "",
           name: data.name || sbUser.email?.split('@')[0] || "Spectator",
           role: data.role || ""
         });
-        if (data.language) setLanguageState(data.language as any);
+        if (data.language) setLanguageState(data.language as "en" | "es" | "fr" | "ar" | "hi" | "ja");
+
         if (data.preferences) {
           const prefs = data.preferences;
           if (prefs.accessStairs !== undefined) setAccessStairsState(prefs.accessStairs);
@@ -543,7 +540,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   };
 
   // Notification helper
-  const addNotification = (message: string, role: AppNotification["role"] = "all", type: AppNotification["type"] = "info") => {
+  const addNotification = useCallback((message: string, role: AppNotification["role"] = "all", type: AppNotification["type"] = "info") => {
     const newNotif: AppNotification = {
       id: Date.now() + Math.floor(Math.random() * 1000),
       message,
@@ -560,30 +557,29 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       else if (type === "success") toast.success(message);
       else toast.info(message);
     }
-  };
+  }, [user]);
 
-  const clearNotification = (id: number) => {
+
+  const clearNotification = useCallback((id: number) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
-  };
+  }, []);
 
   // WEATHER SIMULATOR
-  const setWeather = (newWeather: "Sunny" | "Rainy" | "Windy" | "Clear") => {
+  const setWeather = useCallback((newWeather: "Sunny" | "Rainy" | "Windy" | "Clear") => {
     setWeatherState(newWeather);
     addNotification(`Stadium weather update: now ${newWeather}.`, "all", "info");
-  };
+  }, [addNotification]);
 
   // MATCH PHASE CONTROLLER (Drives deterministic simulation changes)
-  const setMatchPhase = (phase: MatchPhase) => {
+  const setMatchPhase = useCallback((phase: MatchPhase) => {
     setMatchPhaseState(phase);
     
-    let timeObj = { hrs: 0, min: 0, sec: 0 };
     let initZones: Zone[] = [];
     let initQueues: Queue[] = [];
     let msg = "";
 
     switch (phase) {
       case "PRE_MATCH":
-        timeObj = { hrs: 2, min: 42, sec: 15 };
         initZones = [
           { id: "gate_a", name: "East Gate A (Entry)", current_density: 0.82, max_capacity: 5000, status: "Congested" },
           { id: "gate_b", name: "West Gate B (Entry)", current_density: 0.88, max_capacity: 4000, status: "Congested" },
@@ -599,7 +595,6 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         msg = "Match Phase: Pre-Match gates open. Crowd arriving at Gate entrances.";
         break;
       case "FIRST_HALF":
-        timeObj = { hrs: 0, min: 25, sec: 0 };
         initZones = [
           { id: "gate_a", name: "East Gate A (Entry)", current_density: 0.12, max_capacity: 5000, status: "Normal" },
           { id: "gate_b", name: "West Gate B (Entry)", current_density: 0.08, max_capacity: 4000, status: "Normal" },
@@ -615,7 +610,6 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         msg = "Match Phase: Game In-Progress (1st Half). Crowd settled in stands.";
         break;
       case "HALFTIME":
-        timeObj = { hrs: 0, min: 15, sec: 0 };
         initZones = [
           { id: "gate_a", name: "East Gate A (Entry)", current_density: 0.08, max_capacity: 5000, status: "Normal" },
           { id: "gate_b", name: "West Gate B (Entry)", current_density: 0.05, max_capacity: 4000, status: "Normal" },
@@ -631,7 +625,6 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         msg = "Match Phase: Halftime Interval. High concourse congestion & concessions queue spike.";
         break;
       case "SECOND_HALF":
-        timeObj = { hrs: 0, min: 72, sec: 0 };
         initZones = [
           { id: "gate_a", name: "East Gate A (Entry)", current_density: 0.10, max_capacity: 5000, status: "Normal" },
           { id: "gate_b", name: "West Gate B (Entry)", current_density: 0.05, max_capacity: 4000, status: "Normal" },
@@ -647,7 +640,6 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         msg = "Match Phase: Game In-Progress (2nd Half). Crowd in seats.";
         break;
       case "POST_MATCH":
-        timeObj = { hrs: 0, min: 45, sec: 0 };
         initZones = [
           { id: "gate_a", name: "East Gate A (Exit)", current_density: 0.94, max_capacity: 5000, status: "Critical" },
           { id: "gate_b", name: "West Gate B (Exit)", current_density: 0.96, max_capacity: 4000, status: "Critical" },
@@ -664,7 +656,6 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         break;
     }
 
-    setTimeLeft(timeObj);
     setZones(initZones);
     setQueues(initQueues);
     addNotification(msg, "all", "success");
@@ -681,7 +672,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         .then(data => setMaintenanceTasks(data.suggestions || []))
         .catch(err => console.error(err));
     }
-  };
+  }, [user, addNotification]);
 
   // Auth sync
   useEffect(() => {
@@ -750,21 +741,9 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [addNotification]);
 
-  // Countdown clock tick
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.sec > 0) return { ...prev, sec: prev.sec - 1 };
-        if (prev.min > 0) return { ...prev, min: prev.min - 1, sec: 59 };
-        if (prev.hrs > 0) return { hrs: prev.hrs - 1, min: 59, sec: 59 };
-        clearInterval(interval);
-        return prev;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
+
 
   // REAL-TIME SMART STADIUM SIMULATION LOOP
   // Simulates realistic crowd fluctuations, updates charts, spawns random events/notifications
@@ -778,11 +757,11 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       // 1. Tick zones crowd density with minor realistic fluctuations (+/- 3%)
       setZones((prevZones) => {
         const nextZones = prevZones.map((z) => {
-          let drift = (Math.random() - 0.5) * 0.05;
+          const drift = (Math.random() - 0.5) * 0.05;
           
           // Phase-based constraint bounds
           let minDen = 0.05;
-          let maxDen = 0.99;
+          const maxDen = 0.99;
           if (matchPhase === "PRE_MATCH" && (z.id === "gate_a" || z.id === "gate_b")) {
             minDen = 0.70;
           } else if (matchPhase === "HALFTIME" && z.id === "food_court") {
@@ -827,7 +806,7 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             { msg: "A child has been reunited with family at Security Central.", role: "volunteer", type: "success" }
           ];
           const choice = events[Math.floor(Math.random() * events.length)];
-          addNotification(choice.msg, choice.role as any, choice.type as any);
+          addNotification(choice.msg, choice.role as AppNotification["role"], choice.type as AppNotification["type"]);
         }
 
         // 3. Update Chart Histories with new live simulation points
@@ -855,10 +834,11 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }, 6000);
 
     return () => clearInterval(interval);
-  }, [matchPhase, weather, incidents.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matchPhase, weather, incidents.length, zones.length, addNotification, setMatchPhase]);
 
   // Auth selection
-  const handleRoleSelection = async (selectedRole: string) => {
+  const handleRoleSelection = useCallback(async (selectedRole: string) => {
     if (!user) return;
     const updated = { ...user, role: selectedRole };
     setUser(updated);
@@ -873,10 +853,10 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       }
     }
     toast.success(`Role configured as ${selectedRole.replace("_", " ").toUpperCase()}`);
-    addNotification(`Logged in as ${selectedRole.replace("_", " ").toUpperCase()}. Mode Active.`, selectedRole as any, "info");
-  };
+    addNotification(`Logged in as ${selectedRole.replace("_", " ").toUpperCase()}. Mode Active.`, selectedRole as AppNotification["role"], "info");
+  }, [user, addNotification]);
 
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     if (!isSupabaseConfigured) {
       setUser(null);
       localStorage.removeItem("stadiumos_mock_user");
@@ -886,25 +866,24 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     await supabase.auth.signOut();
     setUser(null);
     toast.success("Logged out");
-  };
+  }, []);
 
-  const handleJudgeAutoLogin = (demoRole: string) => {
-    const profile = { 
+  const handleJudgeAutoLogin = useCallback((demoRole: string) => {
+    const profile: UserProfile = { 
       uid: `demo_judge_${demoRole}`, 
       email: `${demoRole}@stadiumos.org`, 
       name: `Demo ${demoRole.replace("_", " ").toUpperCase()}`, 
-      role: demoRole,
-      language: "en"
+      role: demoRole
     };
-    setUser(profile as any);
+    setUser(profile);
     toast.success(`Logged in as Demo ${demoRole.replace("_", " ").toUpperCase()}!`);
     
     // Seed initial notification
-    addNotification(`Operations profile initialized: Demo ${demoRole.replace("_", " ").toUpperCase()}`, demoRole as any, "success");
+    addNotification(`Operations profile initialized: Demo ${demoRole.replace("_", " ").toUpperCase()}`, demoRole as AppNotification["role"], "success");
     setMatchPhase("PRE_MATCH");
-  };
+  }, [addNotification, setMatchPhase]);
 
-  const handleGenerateAnnouncement = async (e: React.FormEvent) => {
+  const handleGenerateAnnouncement = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setIsGeneratingAnnouncement(true);
     try {
@@ -917,14 +896,14 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setGeneratedAnnouncement(data);
       toast.success("Announcement written successfully!");
       addNotification(`📢 Public broadcast alert generated for ${announcementInputs.location}.`, "organizer", "success");
-    } catch (err) {
+    } catch {
       toast.error("Failed to generate announcement.");
     } finally {
       setIsGeneratingAnnouncement(false);
     }
-  };
+  }, [announcementInputs, addNotification]);
 
-  const handleSubmitIncident = async (e: React.FormEvent) => {
+  const handleSubmitIncident = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmittingIncident(true);
     try {
@@ -955,14 +934,14 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
       toast.success("Incident registered & processed by AI.");
       setNewIncident({ type: "Crowd Overflow", location: "Concourse B", severity: "High", description: "" });
-    } catch (err) {
+    } catch {
       toast.error("Failed to log incident.");
     } finally {
       setIsSubmittingIncident(false);
     }
-  };
+  }, [newIncident, addNotification]);
 
-  const handleReportLostItem = (e: React.FormEvent) => {
+  const handleReportLostItem = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (!lostItemInput.name || !lostItemInput.loc) return;
     
@@ -979,31 +958,42 @@ export const DashboardProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
     setLostItems(prev => [lostItemInput, ...prev]);
     setLostItemInput({ name: "", desc: "", loc: "" });
-  };
+  }, [lostItemInput, foundItems, addNotification]);
 
   const theme = ROLE_THEMES[user?.role || "fan"] || ROLE_THEMES.fan;
 
-  return (
-    <DashboardContext.Provider value={{
-      user, setUser, isRolePickerOpen, setIsRolePickerOpen, language, setLanguage,
-      zones, setZones, queues, setQueues, metrics, activeTab, setActiveTab,
-      isAIOpen, setIsAIOpen, timeLeft, joinedQueue, setJoinedQueue,
-      queuePosition, setQueuePosition, queueWaitTime, setQueueWaitTime, queueFilter, setQueueFilter,
-      activeMapMarker, setActiveMapMarker, searchQuery, setSearchQuery,
-      accessStairs, setAccessStairs, accessElevator, setAccessElevator,
-      accessWheelchair, setAccessWheelchair, accessContrast, setAccessContrast,
-      accessTextSize, setAccessTextSize,
-      incidents, setIncidents, newIncident, setNewIncident, recentIncidentAI, setRecentIncidentAI,
-      isSubmittingIncident, handleSubmitIncident,
-      announcementInputs, setAnnouncementInputs, generatedAnnouncement, setGeneratedAnnouncement,
-      isGeneratingAnnouncement, handleGenerateAnnouncement,
-      sustainabilityTips, maintenanceTasks,
-      lostItems, lostItemInput, setLostItemInput, foundItems, setFoundItems, handleReportLostItem,
-      handleRoleSelection, handleSignOut, handleJudgeAutoLogin, t, theme,
+  const contextValue = useMemo(() => ({
+    user, setUser, isRolePickerOpen, setIsRolePickerOpen, language, setLanguage,
+    zones, setZones, queues, setQueues, metrics, activeTab, setActiveTab,
+    isAIOpen, setIsAIOpen, joinedQueue, setJoinedQueue,
+    queuePosition, setQueuePosition, queueWaitTime, setQueueWaitTime, queueFilter, setQueueFilter,
+    activeMapMarker, setActiveMapMarker, searchQuery, setSearchQuery,
+    accessStairs, setAccessStairs, accessElevator, setAccessElevator,
+    accessWheelchair, setAccessWheelchair, accessContrast, setAccessContrast,
+    accessTextSize, setAccessTextSize,
+    incidents, setIncidents, newIncident, setNewIncident, recentIncidentAI, setRecentIncidentAI,
+    isSubmittingIncident, handleSubmitIncident,
+    announcementInputs, setAnnouncementInputs, generatedAnnouncement, setGeneratedAnnouncement,
+    isGeneratingAnnouncement, handleGenerateAnnouncement,
+    sustainabilityTips, maintenanceTasks,
+    lostItems, lostItemInput, setLostItemInput, foundItems, setFoundItems, handleReportLostItem,
+    handleRoleSelection, handleSignOut, handleJudgeAutoLogin, t, theme,
+    matchPhase, setMatchPhase, weather, setWeather, notifications, clearNotification, chartHistory, addNotification
+  }), [
+    user, isRolePickerOpen, language, zones, queues, metrics, activeTab, isAIOpen, joinedQueue,
+    queuePosition, queueWaitTime, queueFilter, activeMapMarker, searchQuery,
+    accessStairs, setAccessStairs, accessElevator, setAccessElevator,
+    accessWheelchair, setAccessWheelchair, accessContrast, setAccessContrast,
+    accessTextSize, setAccessTextSize, setLanguage,
+    incidents, newIncident, recentIncidentAI, isSubmittingIncident, handleSubmitIncident,
+    announcementInputs, generatedAnnouncement, isGeneratingAnnouncement, handleGenerateAnnouncement,
+    sustainabilityTips, maintenanceTasks, lostItems, lostItemInput, foundItems, handleReportLostItem,
+    handleRoleSelection, handleSignOut, handleJudgeAutoLogin, t, theme,
+    matchPhase, setMatchPhase, weather, setWeather, notifications, clearNotification, chartHistory, addNotification
+  ]);
 
-      // Extensions
-      matchPhase, setMatchPhase, weather, setWeather, notifications, clearNotification, chartHistory, addNotification
-    }}>
+  return (
+    <DashboardContext.Provider value={contextValue}>
       {children}
     </DashboardContext.Provider>
   );

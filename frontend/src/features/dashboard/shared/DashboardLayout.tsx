@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useDashboard } from "./DashboardContext";
+import { useDashboard, MatchPhase } from "./DashboardContext";
 import { ChatInterface } from "@/components/ChatInterface";
 import { 
   Languages, 
@@ -135,10 +135,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     t,
     theme,
     zones,
-    queues,
-    timeLeft,
-    searchQuery,
-    setSearchQuery,
     accessWheelchair,
     setAccessWheelchair,
     accessElevator,
@@ -160,11 +156,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     generatedAnnouncement,
     sustainabilityTips,
     maintenanceTasks,
-    lostItems,
-    lostItemInput,
-    setLostItemInput,
-    handleReportLostItem,
-    foundItems,
     notifications,
     clearNotification,
     matchPhase,
@@ -180,7 +171,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
   const [selectedPhrase, setSelectedPhrase] = useState(Object.keys(PHRASE_BANK)[0]);
   const [safetyForm, setSafetyForm] = useState({ type: "Evacuation Notice", location: "", message: "", severity: "High" });
   const [safetySent, setSafetySent] = useState(false);
-  const [announcementHistory, setAnnouncementHistory] = useState<any[]>([]);
+
   const [broadcastHistory, setBroadcastHistory] = useState<string[]>([]);
 
   if (!user) return null;
@@ -338,7 +329,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
             </label>
             <select
               value={language}
-              onChange={(e) => setLanguage(e.target.value as any)}
+              onChange={(e) => setLanguage(e.target.value as "en" | "es" | "fr" | "ar" | "hi" | "ja")}
               className="w-full bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 p-2.5 rounded-lg focus:outline-none focus:border-cyan-500/50 transition-colors"
             >
               <option value="en">English (US)</option>
@@ -437,7 +428,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
               </h3>
               <select
                 value={language}
-                onChange={(e) => setLanguage(e.target.value as any)}
+                onChange={(e) => setLanguage(e.target.value as "en" | "es" | "fr" | "ar" | "hi" | "ja")}
                 className="bg-zinc-950 border border-zinc-800 text-sm text-zinc-300 p-2.5 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-colors w-full max-w-xs"
               >
                 <option value="en">English (US)</option>
@@ -479,7 +470,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                   <span className="text-xs text-zinc-400 font-bold uppercase">Text Scaling</span>
                   <select 
                     value={accessTextSize} 
-                    onChange={(e) => setAccessTextSize(e.target.value as any)}
+                    onChange={(e) => setAccessTextSize(e.target.value as "normal" | "large" | "huge")}
                     className={`bg-transparent ${theme.text} font-bold outline-none text-sm`}
                   >
                     <option value="normal">Normal (A)</option>
@@ -510,7 +501,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                   <label className="text-xs font-bold text-zinc-400 uppercase tracking-wide">Match Day Phase</label>
                   <select 
                     value={matchPhase} 
-                    onChange={(e) => setMatchPhase(e.target.value as any)}
+                    onChange={(e) => setMatchPhase(e.target.value as MatchPhase)}
                     className="w-full bg-zinc-950 border border-zinc-800 text-sm text-zinc-300 p-2.5 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-colors"
                   >
                     <option value="PRE_MATCH">Pre-Match (Crowd arriving, Gate queues rising)</option>
@@ -525,7 +516,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                   <label className="text-xs font-bold text-zinc-400 uppercase tracking-wide">Simulated Weather Mode</label>
                   <select 
                     value={weather} 
-                    onChange={(e) => setWeather(e.target.value as any)}
+                    onChange={(e) => setWeather(e.target.value as "Sunny" | "Rainy" | "Windy" | "Clear")}
                     className="w-full bg-zinc-950 border border-zinc-800 text-sm text-zinc-305 p-2.5 rounded-xl focus:outline-none focus:border-cyan-500/50 transition-colors"
                   >
                     <option value="Sunny">Sunny ☀️ (Standard operations)</option>
@@ -983,7 +974,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                   <div className="space-y-2">
                     <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-xl">
                       <div className="text-[10px] text-zinc-500 font-bold uppercase mb-1">🇬🇧 English (Source)</div>
-                      <p className="text-sm text-zinc-200">"{selectedPhrase}"</p>
+                       <p className="text-sm text-zinc-200">&quot;{selectedPhrase}&quot;</p>
                     </div>
                     
                     {selectedPhrase && PHRASE_BANK[selectedPhrase] && Object.entries(PHRASE_BANK[selectedPhrase]).map(([lang, text]) => (
@@ -991,7 +982,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
                         <div className="text-[10px] text-zinc-500 font-bold uppercase mb-1">
                           {lang === "es" ? "🇪🇸 Spanish" : lang === "fr" ? "🇫🇷 French" : lang === "ar" ? "🇸🇦 Arabic" : lang === "hi" ? "🇮🇳 Hindi" : "🇯🇵 Japanese"}
                         </div>
-                        <p className={`text-sm ${theme.text}`}>"{text}"</p>
+                         <p className={`text-sm ${theme.text}`}>&quot;{text}&quot;</p>
                       </div>
                     ))}
                   </div>

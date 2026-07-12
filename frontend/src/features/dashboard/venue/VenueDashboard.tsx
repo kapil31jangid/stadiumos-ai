@@ -8,16 +8,13 @@ import {
   Flame, 
   Bot, 
   Activity, 
-  Clock, 
-  Map, 
-  Users 
+  Clock
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { SVGChart } from "@/components/SVGChart";
 
 export const VenueDashboard: React.FC = () => {
   const {
-    sustainabilityTips,
     maintenanceTasks,
     theme,
     setActiveTab,

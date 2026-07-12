@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Zap, Eye, EyeOff, Maximize2, Minimize2 } from "lucide-react";
+import { Zap, Maximize2, Minimize2 } from "lucide-react";
 
 import {
   STADIUM_ZONES,
@@ -224,7 +224,7 @@ interface StadiumMapProps {
 
 export const StadiumMap: React.FC<StadiumMapProps> = ({ compact = false }) => {
   const {
-    user, zones, incidents, matchPhase, theme, setActiveTab, weather
+    user, zones, incidents, matchPhase, setActiveTab, weather
   } = useDashboard();
 
   const role = user?.role || "fan";
