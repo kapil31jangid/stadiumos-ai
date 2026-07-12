@@ -3,16 +3,12 @@
     "frontend": {
       "root": "frontend",
       "framework": "nextjs"
-    },
-    "backend": {
-      "root": "backend",
-      "entrypoint": "main.py"
     }
   },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": { "service": "backend" }
+      "destination": "https://stadiumos-ai-r7cq.onrender.com/api/$1"
     },
     {
       "source": "/(.*)",

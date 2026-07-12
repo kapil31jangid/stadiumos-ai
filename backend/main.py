@@ -58,6 +58,10 @@ app.include_router(crowd_router)
 app.include_router(incidents_router)
 app.include_router(sustainability_router)
 
+@app.get("/")
+async def root():
+    return {"message": "StadiumOS AI Backend API is running. Check health at /api/health"}
+
 # Static File Serving (For Cloud Run host-and-serve)
 static_dir = os.path.join(os.getcwd(), "static")
 if os.path.exists(static_dir):
