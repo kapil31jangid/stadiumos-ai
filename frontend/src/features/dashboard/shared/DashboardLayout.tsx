@@ -1,8 +1,27 @@
 "use client";
 
 import React, { useState } from "react";
+import dynamic from "next/dynamic";
 import { useDashboard, MatchPhase } from "./DashboardContext";
-import { ChatInterface } from "@/components/ChatInterface";
+
+const ChatInterface = dynamic(() => import("@/components/ChatInterface").then((mod) => mod.ChatInterface), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full flex items-center justify-center text-xs text-zinc-500">
+      Loading AI Assistant...
+    </div>
+  ),
+});
+
+const Heatmap = dynamic(() => import("@/components/Heatmap").then((mod) => mod.Heatmap), {
+  ssr: false,
+  loading: () => (
+    <div className="h-96 bg-zinc-950/20 border border-zinc-800 rounded-3xl animate-pulse flex items-center justify-center text-xs text-zinc-500">
+      Loading Stadium Map telemetry...
+    </div>
+  ),
+});
+
 import { 
   Languages, 
   Sliders, 
@@ -31,9 +50,6 @@ import {
   Send
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-
-
-import { Heatmap } from "@/components/Heatmap";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;

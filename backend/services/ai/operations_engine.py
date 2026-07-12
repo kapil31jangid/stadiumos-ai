@@ -92,12 +92,7 @@ class AIOperationsEngine:
         )
         try:
             response = await llm.ainvoke(prompt)
-            content = response.content.strip()
-            if content.startswith("```json"):
-                content = content[7:]
-            if content.endswith("```"):
-                content = content[:-3]
-            return json.loads(content.strip())
+            return AIOperationsEngine._parse_json_response(response.content)
         except Exception as e:
             print(f"Announcement generation error: {e}")
             return {
@@ -132,12 +127,7 @@ class AIOperationsEngine:
         )
         try:
             response = await llm.ainvoke(prompt)
-            content = response.content.strip()
-            if content.startswith("```json"):
-                content = content[7:]
-            if content.endswith("```"):
-                content = content[:-3]
-            return json.loads(content.strip())
+            return AIOperationsEngine._parse_json_response(response.content)
         except Exception as e:
             print(f"Incident analysis error: {e}")
             return {
@@ -164,12 +154,7 @@ class AIOperationsEngine:
         )
         try:
             response = await llm.ainvoke(prompt)
-            content = response.content.strip()
-            if content.startswith("```json"):
-                content = content[7:]
-            if content.endswith("```"):
-                content = content[:-3]
-            return json.loads(content.strip())
+            return AIOperationsEngine._parse_json_response(response.content)
         except Exception as e:
             print(f"Sustainability recommendations error: {e}")
             return {
@@ -196,12 +181,7 @@ class AIOperationsEngine:
         )
         try:
             response = await llm.ainvoke(prompt)
-            content = response.content.strip()
-            if content.startswith("```json"):
-                content = content[7:]
-            if content.endswith("```"):
-                content = content[:-3]
-            return json.loads(content.strip())
+            return AIOperationsEngine._parse_json_response(response.content)
         except Exception as e:
             print(f"Maintenance suggestions error: {e}")
             return {
@@ -210,3 +190,12 @@ class AIOperationsEngine:
                     "Service entrance Gate B turnstile bearings before halftime surge."
                 ]
             }
+
+    @staticmethod
+    def _parse_json_response(content: str) -> dict:
+        content = content.strip()
+        if content.startswith("```json"):
+            content = content[7:]
+        if content.endswith("```"):
+            content = content[:-3]
+        return json.loads(content.strip())

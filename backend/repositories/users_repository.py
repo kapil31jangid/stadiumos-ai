@@ -1,10 +1,7 @@
 import os
 import json
-import psycopg2
 from psycopg2.extras import RealDictCursor
-
-def get_db_connection():
-    return psycopg2.connect(os.getenv("DATABASE_URL"))
+from .db import get_db_connection
 
 class UsersRepository:
     @staticmethod

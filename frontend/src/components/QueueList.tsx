@@ -3,12 +3,7 @@
 import React from "react";
 import { Clock } from "lucide-react";
 
-interface Queue {
-  id: string;
-  name: string;
-  wait_time: number;
-  length: number;
-}
+import { Queue } from "@/features/dashboard/shared/DashboardContext";
 
 interface QueueListProps {
   queues: Queue[];
