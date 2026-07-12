@@ -38,6 +38,8 @@ const TestConsumer: React.FC = () => {
       <div data-testid="weather">{context.weather}</div>
       <div data-testid="matchPhase">{context.matchPhase}</div>
       <div data-testid="activeTab">{context.activeTab}</div>
+      <div data-testid="user-role">{context.user?.role || 'none'}</div>
+      <div data-testid="notif-count">{context.notifications.length}</div>
       
       <button 
         data-testid="btn-set-lang" 
@@ -58,6 +60,20 @@ const TestConsumer: React.FC = () => {
         onClick={() => context.setMatchPhase('FIRST_HALF')}
       >
         Set First Half
+      </button>
+
+      <button 
+        data-testid="btn-switch-role" 
+        onClick={() => context.handleJudgeAutoLogin('volunteer')}
+      >
+        Switch to Volunteer
+      </button>
+
+      <button 
+        data-testid="btn-add-notif" 
+        onClick={() => context.addNotification('Test system alert', 'volunteer', 'warning')}
+      >
+        Add Warning Notif
       </button>
     </div>
   );
@@ -120,5 +136,35 @@ describe('DashboardContext System', () => {
     });
 
     expect(screen.getByTestId('matchPhase').textContent).toBe('FIRST_HALF');
+  });
+
+  it('performs role switching and updates profile state', async () => {
+    render(
+      <DashboardProvider>
+        <TestConsumer />
+      </DashboardProvider>
+    );
+
+    const btn = screen.getByTestId('btn-switch-role');
+    await act(async () => {
+      btn.click();
+    });
+
+    expect(screen.getByTestId('user-role').textContent).toBe('volunteer');
+  });
+
+  it('adds and lists notifications correctly', async () => {
+    render(
+      <DashboardProvider>
+        <TestConsumer />
+      </DashboardProvider>
+    );
+
+    const btn = screen.getByTestId('btn-add-notif');
+    await act(async () => {
+      btn.click();
+    });
+
+    expect(parseInt(screen.getByTestId('notif-count').textContent || '0', 10)).toBeGreaterThanOrEqual(1);
   });
 });

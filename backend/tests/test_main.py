@@ -50,8 +50,7 @@ def test_recommend_validation():
     })
     assert response.status_code == 422
 
-@pytest.mark.asyncio
-async def test_recommend_success(mock_crowd_repo, mock_ai_engine):
+def test_recommend_success(mock_crowd_repo, mock_ai_engine):
     mock_crowd_repo.get_zones.return_value = [
         {"id": "gate_a", "name": "East Gate A", "current_density": 0.2, "max_capacity": 5000, "status": "Normal"}
     ]
@@ -70,8 +69,7 @@ async def test_recommend_success(mock_crowd_repo, mock_ai_engine):
     assert response.json()["status"] == "Success"
     assert "Zone B" in response.json()["recommendation"]
 
-@pytest.mark.asyncio
-async def test_generate_announcement(mock_ai_engine):
+def test_generate_announcement(mock_ai_engine):
     mock_ai_engine.generate_announcement = AsyncMock(return_value={
         "public_announcement": "ALERT: Crowd bottleneck at Gate C. Proceed to other exits.",
         "volunteer_instructions": "Direct attendees away from Gate C.",
@@ -91,8 +89,7 @@ async def test_generate_announcement(mock_ai_engine):
     assert "public_announcement" in response.json()
     assert "translations" in response.json()
 
-@pytest.mark.asyncio
-async def test_create_incident(mock_incident_repo, mock_ai_engine):
+def test_create_incident(mock_incident_repo, mock_ai_engine):
     mock_ai_engine.analyze_incident = AsyncMock(return_value={
         "summary": "Medical emergency at Concourse B",
         "priority": "HIGH",
@@ -116,8 +113,7 @@ async def test_create_incident(mock_incident_repo, mock_ai_engine):
     assert "summary" in response.json()
     assert response.json()["priority"] == "HIGH"
 
-@pytest.mark.asyncio
-async def test_sustainability_recommendations(mock_ai_engine):
+def test_sustainability_recommendations(mock_ai_engine):
     mock_ai_engine.get_sustainability_recommendations = AsyncMock(return_value={
         "recommendations": [
             "Reduce concourse overhead lighting during high daylight hours.",
@@ -129,8 +125,7 @@ async def test_sustainability_recommendations(mock_ai_engine):
     assert "recommendations" in response.json()
     assert len(response.json()["recommendations"]) > 0
 
-@pytest.mark.asyncio
-async def test_venue_maintenance_suggestions(mock_ai_engine):
+def test_venue_maintenance_suggestions(mock_ai_engine):
     mock_ai_engine.get_maintenance_suggestions = AsyncMock(return_value={
         "suggestions": [
             "Monitor elevator cabin vibration levels in Section 102.",
