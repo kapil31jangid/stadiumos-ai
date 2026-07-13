@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React from "react";
 import { useDashboard } from "../shared/DashboardContext";
 import { SharedWidget } from "../shared/SharedWidget";
+import { MatchCountdownCard } from "./components/MatchCountdownCard";
+import { CrowdWidget } from "./components/CrowdWidget";
+import { NavigationWidget } from "./components/NavigationWidget";
 import { 
-  Users, 
-  MapPin, 
   Clock, 
   Coffee, 
   Compass, 
@@ -19,9 +20,6 @@ import { SVGChart } from "@/components/SVGChart";
 
 export const FanDashboard: React.FC = () => {
   const {
-    metrics,
-    searchQuery,
-    setSearchQuery,
     setActiveTab,
     queues,
     joinedQueue,
@@ -43,77 +41,14 @@ export const FanDashboard: React.FC = () => {
     handleReportLostItem,
     theme,
     chartHistory,
-    zones,
-    matchPhase
+    zones
   } = useDashboard();
-
-  const [timeLeft, setTimeLeft] = useState({ hrs: 2, min: 42, sec: 15 });
-
-  // Reset timer on match phase changes
-  // Reset timer when match phase changes
-  useEffect(() => {
-    let timeObj = { hrs: 2, min: 42, sec: 15 };
-    switch (matchPhase) {
-      case "PRE_MATCH":  timeObj = { hrs: 2, min: 42, sec: 15 }; break;
-      case "FIRST_HALF": timeObj = { hrs: 0, min: 25, sec: 0 }; break;
-      case "HALFTIME":   timeObj = { hrs: 0, min: 15, sec: 0 }; break;
-      case "SECOND_HALF": timeObj = { hrs: 0, min: 72, sec: 0 }; break;
-      case "POST_MATCH": timeObj = { hrs: 0, min: 45, sec: 0 }; break;
-    }
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setTimeLeft(timeObj);
-  }, [matchPhase]);
-
-  // Countdown timer tick
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev.sec > 0) return { ...prev, sec: prev.sec - 1 };
-        if (prev.min > 0) return { ...prev, min: prev.min - 1, sec: 59 };
-        if (prev.hrs > 0) return { hrs: prev.hrs - 1, min: 59, sec: 59 };
-        clearInterval(interval);
-        return prev;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       
       {/* 1. Today's Match (Championship Countdown Card) */}
-      <div className="bg-gradient-to-r from-zinc-900 to-zinc-950 border border-zinc-800/60 p-6 md:p-8 rounded-3xl flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-2xl" />
-        <div className="space-y-2">
-          <span className={`bg-blue-500/10 ${theme.text} text-[10px] font-bold px-2 py-1 rounded uppercase tracking-wider`}>
-            Up Next
-          </span>
-          <span className="text-zinc-500 text-xs ml-2">Main Stage</span>
-          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white mt-1">
-            Championship Kick-off
-          </h2>
-          <p className="text-xs text-zinc-400">Today&apos;s Match: Argentina vs France</p>
-        </div>
-
-        {/* Counter block */}
-        <div className="flex gap-4 items-center self-start md:self-auto">
-          {[
-            { label: "HRS", val: String(timeLeft.hrs).padStart(2, "0") },
-            { label: "MIN", val: String(timeLeft.min).padStart(2, "0") },
-            { label: "SEC", val: String(timeLeft.sec).padStart(2, "0") },
-          ].map((item, idx) => (
-            <React.Fragment key={idx}>
-              {idx > 0 && <span className="text-xl font-bold text-zinc-600">:</span>}
-              <div className="flex flex-col items-center">
-                <div className={`bg-zinc-950 border border-zinc-800/80 px-4 py-3 rounded-xl text-xl font-mono font-bold ${theme.text} shadow-inner`}>
-                  {item.val}
-                </div>
-                <span className="text-[9px] font-bold text-zinc-500 mt-1.5 tracking-wider">{item.label}</span>
-              </div>
-            </React.Fragment>
-          ))}
-        </div>
-      </div>
+      <MatchCountdownCard />
 
       {/* SVG Queue trend chart */}
       <div className="grid grid-cols-1 gap-6">
@@ -130,45 +65,10 @@ export const FanDashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         
         {/* 2. Current Crowd */}
-        <SharedWidget title="Current Crowd" icon={Users} badge="Live telemetry">
-          <div className="space-y-4">
-            <div className="flex items-end justify-between">
-              <div>
-                <span className="text-[10px] uppercase font-bold text-zinc-500">Average Stadium Occupancy</span>
-                <div className="text-3xl font-extrabold text-white mt-1">{(metrics.avgOccupancy * 100).toFixed(0)}%</div>
-              </div>
-              <Badge variant="outline" className={`${
-                metrics.avgOccupancy > 0.8 ? "border-red-500/20 text-red-400" :
-                metrics.avgOccupancy > 0.5 ? "border-yellow-500/20 text-yellow-400" :
-                "border-emerald-500/20 text-emerald-400"
-              } font-mono`}>
-                {metrics.avgOccupancy > 0.8 ? "Critical Peak" : metrics.avgOccupancy > 0.5 ? "Heavy Flow" : "Normal Flow"}
-              </Badge>
-            </div>
-            <div className="text-[11px] text-zinc-400 leading-relaxed">
-              Crowd densities are active. Total of {metrics.totalZones} zones reporting real-time ticket flow rates.
-            </div>
-          </div>
-        </SharedWidget>
+        <CrowdWidget />
 
         {/* 3. Live Navigation */}
-        <SharedWidget title="Live Navigation" icon={MapPin}>
-          <div className="space-y-3">
-            <input 
-              type="text" 
-              placeholder="Search sections, gates, concessions..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-zinc-950 border border-zinc-800 text-xs text-white placeholder:text-zinc-600 px-3 py-2 rounded-xl focus:outline-none focus:border-cyan-500/50"
-            />
-            <button 
-              onClick={() => setActiveTab("navigation")}
-              className={`w-full ${theme.bg} ${theme.hoverBg} text-white font-bold py-2 rounded-xl text-xs transition-all flex items-center justify-center gap-1.5`}
-            >
-              Open Pathfinder Map →
-            </button>
-          </div>
-        </SharedWidget>
+        <NavigationWidget />
 
         {/* 4. Queue Times */}
         <SharedWidget title="Concourse Queue Times" icon={Clock} badge="Live Wait Times">
